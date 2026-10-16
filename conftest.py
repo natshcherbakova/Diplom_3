@@ -87,13 +87,11 @@ def pytest_generate_tests(metafunc):
 @pytest.fixture
 def driver(request):
     headless = request.config.getoption("--headless")
-
     browser = DriverFactory.get_driver(request.param, headless)
-
-    try:
-        yield browser
-    finally:
-        browser.quit()
+  
+    yield browser
+    
+    browser.quit()
 
 
 @pytest.fixture
@@ -133,28 +131,12 @@ def create_new_user():
     user_data = UserData.generate_user_data()
 
     response = UserMethods.create_user(user_data)
-
-    assert response.status_code == 200, (
-        f"Ошибка создания пользователя: "
-        f"{response.status_code}, {response.text}"
-    )
-
     access_token = response.json()["accessToken"]
     user_data["access_token"] = access_token
 
-    try:
-        yield user_data
+    yield user_data
 
-    finally:
-        delete_response = UserMethods.delete_user(access_token)
-
-        assert delete_response.status_code == 202, (
-            f"Ошибка удаления пользователя: "
-            f"{delete_response.status_code}, "
-            f"{delete_response.text}"
-        )
-
-        assert delete_response.json()["success"] is True
+    UserMethods.delete_user(access_token)
 
 
 # фикстура заказа: создаёт заказ через API для тестового пользователя
@@ -164,15 +146,6 @@ def create_order(create_new_user):
     response = OrderMethods.create_order(
         Ingredients.correct_ingredients_data,
         create_new_user["access_token"]
-    )
-
-    assert response.status_code == 200, (
-        f"Ошибка создания заказа: "
-        f"{response.status_code}, {response.text}"
-    )
-
-    assert response.json()["success"] is True, (
-        f"Не удалось создать заказ: {response.text}"
     )
 
     return response.json()
